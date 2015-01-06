@@ -17,7 +17,7 @@ new String:queuedTankSteamId[64];
 new Handle:hTankPrint;
 new Handle:hTankDebug;
 
-public Plugin:myinfo = 
+public Plugin:myinfo =
 {
     name = "L4D2 Tank Control",
     author = "arti",
@@ -80,7 +80,7 @@ public OnPluginStart()
  *  When the tank disconnects, choose another one.
  */
  
-public OnClientDisconnect(client) 
+public OnClientDisconnect(client)
 {
     decl String:tmpSteamId[64];
     
@@ -167,10 +167,10 @@ public PlayerDeath_Event(Handle:event, const String:name[], bool:dontBroadcast)
     new victimId = GetEventInt(event, "userid");
     new victim = GetClientOfUserId(victimId);
     
-    if (victimId && IsClientInGame(victim)) 
+    if (victimId && IsClientInGame(victim))
     {
         zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
-        if (ZClass:zombieClass == ZClass_Tank) 
+        if (ZClass:zombieClass == ZClass_Tank)
         {
             if (GetConVarBool(hTankDebug))
             {
@@ -181,7 +181,7 @@ public PlayerDeath_Event(Handle:event, const String:name[], bool:dontBroadcast)
     }
 }
 
-public TankKilled_Event(Handle:event, const String:name[], bool:dontBroadcast) 
+public TankKilled_Event(Handle:event, const String:name[], bool:dontBroadcast)
 {
     if (GetConVarBool(hTankDebug))
     {
@@ -202,7 +202,7 @@ public Action:Tank_Cmd(client, args)
     decl String:tankClientName[128];
     
     // Only output if we have a queued tank
-    if (! strcmp(queuedTankSteamId, ""))
+    if (strcmp(queuedTankSteamId, "") == 0)
     {
         return Plugin_Handled;
     }
@@ -252,7 +252,7 @@ public Action:TankShuffle_Cmd(client, args)
  */
  
 public Action:GiveTank_Cmd(client, args)
-{    
+{
     // Who are we targetting?
     new String:arg1[32];
     GetCmdArg(1, arg1, sizeof(arg1));
@@ -265,7 +265,7 @@ public Action:GiveTank_Cmd(client, args)
     }
     
     // Get the players name
-    new String:name[MAX_NAME_LENGTH]; 
+    new String:name[MAX_NAME_LENGTH];
     GetClientName(target, name, sizeof(name));
     
     // Set the tank
@@ -306,7 +306,7 @@ public chooseTank()
     infectedPool = removeTanksFromPool(infectedPool, h_whosHadTank);
     
     // If the infected pool is empty, remove infected players from pool
-    if (GetArraySize(infectedPool) == 0) // (when nobody on infected ,error)
+    if (GetArraySize(infectedPool) == 0) // (when nobody on infected, error)
     {
         new Handle:infectedTeam = teamSteamIds(L4D2Team_Infected);
         if (GetArraySize(infectedTeam) > 1)
@@ -332,11 +332,11 @@ public chooseTank()
  */
  
 public Action:L4D_OnTryOfferingTankBot(tank_index, &bool:enterStatis)
-{    
+{
     // Reset the tank's frustration if need be
-    if (! IsFakeClient(tank_index)) 
+    if (! IsFakeClient(tank_index))
     {
-        for (new i = 1; i <= MaxClients; i++) 
+        for (new i = 1; i <= MaxClients; i++)
         {
             if (! IsClientInGame(i) || ! IsInfected(i))
                 continue;
@@ -410,11 +410,11 @@ stock PrintToInfected(const String:Message[], any:... )
     decl String:sPrint[256];
     VFormat(sPrint, sizeof(sPrint), Message, 2);
 
-    for (new i = 1; i <= MaxClients; i++) 
+    for (new i = 1; i <= MaxClients; i++)
     {
-        if (!IS_VALID_INFECTED(i)) 
-        { 
-            continue; 
+        if (!IS_VALID_INFECTED(i))
+        {
+            continue;
         }
 
         CPrintToChat(i, "{default}%s", sPrint);
@@ -422,10 +422,10 @@ stock PrintToInfected(const String:Message[], any:... )
 }
 /**
  * Returns an array of steam ids for a particular team.
- * 
+ *
  * @param L4D2Team:team
  *     The team which to return steam ids for.
- * 
+ *
  * @return
  *     An array of steam ids.
  */
@@ -454,12 +454,12 @@ public Handle:teamSteamIds(L4D2Team:team)
 
 /**
  * Removes steam ids from the tank pool if they've already had tank.
- * 
+ *
  * @param Handle:steamIdTankPool
  *     The pool of potential steam ids to become tank.
  * @ param Handle:tanks
  *     The steam ids of players who've already had tank.
- * 
+ *
  * @return
  *     The pool of steam ids who haven't had tank.
  */
@@ -485,24 +485,24 @@ public Handle:removeTanksFromPool(Handle:steamIdTankPool, Handle:tanks)
 
 /**
  * Retrieves a player's client index by their steam id.
- * 
+ *
  * @param const String:steamId[]
  *     The steam id to look for.
- * 
+ *
  * @return
  *     The player's client index.
  */
  
-public getInfectedPlayerBySteamId(const String:steamId[]) 
+public getInfectedPlayerBySteamId(const String:steamId[])
 {
     decl String:tmpSteamId[64];
    
-    for (new i = 1; i <= MaxClients; i++) 
+    for (new i = 1; i <= MaxClients; i++)
     {
         if (!IsClientConnected(i) || !IsInfected(i))
             continue;
         
-        GetClientAuthString(i, tmpSteamId, sizeof(tmpSteamId));     
+        GetClientAuthString(i, tmpSteamId, sizeof(tmpSteamId));
         
         if (StrEqual(steamId, tmpSteamId))
             return i;
@@ -511,24 +511,24 @@ public getInfectedPlayerBySteamId(const String:steamId[])
     return -1;
 }
 
-/** 
- * Sends a message to all clients console. 
- * 
- * @param format        Formatting rules. 
- * @param ...            Variable number of format parameters. 
- * @noreturn 
- */ 
+/**
+ * Sends a message to all clients console.
+ *
+ * @param format        Formatting rules.
+ * @param ...            Variable number of format parameters.
+ * @noreturn
+ */
  
-stock PrintToConsoleAll(const String:format[], any:...) 
-{ 
-    decl String:text[192]; 
-    for (new x = 1; x <= MaxClients; x++) 
-    { 
-        if (IsClientInGame(x)) 
-        { 
-            SetGlobalTransTarget(x); 
-            VFormat(text, sizeof(text), format, 2); 
-            PrintToConsole(x, text); 
-        } 
-    } 
+stock PrintToConsoleAll(const String:format[], any:...)
+{
+    decl String:text[192];
+    for (new x = 1; x <= MaxClients; x++)
+    {
+        if (IsClientInGame(x))
+        {
+            SetGlobalTransTarget(x);
+            VFormat(text, sizeof(text), format, 2);
+            PrintToConsole(x, text);
+        }
+    }
 }

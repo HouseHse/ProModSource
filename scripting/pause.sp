@@ -22,16 +22,15 @@
 
 #include <sourcemod>
 #include <colors>
-#include <sdktools>
 #undef REQUIRE_PLUGIN
-#include <readyup>
+#include "readyup"
 
 public Plugin:myinfo =
 {
 	name = "Pause plugin",
 	author = "CanadaRox",
 	description = "Adds pause functionality without breaking pauses",
-	version = "8",
+	version = "6",
 	url = ""
 };
 
@@ -65,8 +64,6 @@ new bool:readyUpIsAvailable;
 new Handle:pauseForward;
 new Handle:unpauseForward;
 new Handle:deferredPauseTimer;
-new Handle:l4d_ready_delay;
-new Handle:l4d_ready_blips;
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
@@ -85,7 +82,6 @@ public OnPluginStart()
 	RegConsoleCmd("sm_unpause", Unpause_Cmd, "Marks your team as ready for an unpause");
 	RegConsoleCmd("sm_ready", Unpause_Cmd, "Marks your team as ready for an unpause");
 	RegConsoleCmd("sm_unready", Unready_Cmd, "Marks your team as ready for an unpause");
-	RegConsoleCmd("sm_toggleready", ToggleReady_Cmd, "Toggles your team's ready status");
 
 	RegAdminCmd("sm_forcepause", ForcePause_Cmd, ADMFLAG_BAN, "Pauses the game and only allows admins to unpause");
 	RegAdminCmd("sm_forceunpause", ForceUnpause_Cmd, ADMFLAG_BAN, "Unpauses the game regardless of team ready status.  Must be used to unpause admin pauses");
@@ -98,8 +94,6 @@ public OnPluginStart()
 	sv_noclipduringpause = FindConVar("sv_noclipduringpause");
 
 	pauseDelayCvar = CreateConVar("sm_pausedelay", "0", "Delay to apply before a pause happens.  Could be used to prevent Tactical Pauses", FCVAR_PLUGIN, true, 0.0);
-	l4d_ready_delay = CreateConVar("l4d_ready_delay", "5", "Number of seconds to count down before the round goes live.", FCVAR_PLUGIN, true, 0.0);
-	l4d_ready_blips = CreateConVar("l4d_ready_blips", "1", "Enable beep on unpause");
 
 	HookEvent("round_end", RoundEnd_Event, EventHookMode_PostNoCopy);
 }
@@ -129,16 +123,8 @@ public OnClientPutInServer(client)
 	if (isPaused)
 	{
 		if (!IsFakeClient(client))
-		{
 			PrintToChatAll("\x01[SM] \x03%N \x01is now fully loaded in game", client);
-			ChangeClientTeam(client, _:L4D2Team_Spectator);
-		}
 	}
-}
-
-public OnMapStart()
-{
-	PrecacheSound("buttons/blip2.wav");
 }
 
 public RoundEnd_Event(Handle:event, const String:name[], bool:dontBroadcast)
@@ -190,7 +176,7 @@ public Action:Unpause_Cmd(client, args)
 			PrintToChatAll("[SM] %N marked %s as ready", client, teamString[L4D2Team:GetClientTeam(client)]);
 		}
 		teamReady[clientTeam] = true;
-		if (!adminPause && CheckFullReady())
+		if (CheckFullReady())
 		{
 			InitiateLiveCountdown();
 		}
@@ -200,7 +186,7 @@ public Action:Unpause_Cmd(client, args)
 
 public Action:Unready_Cmd(client, args)
 {
-	if (isPaused && IsPlayer(client))
+	if (isPaused && IsPlayer(client) && !adminPause)
 	{
 		new L4D2Team:clientTeam = L4D2Team:GetClientTeam(client);
 		if (teamReady[clientTeam])
@@ -209,25 +195,6 @@ public Action:Unready_Cmd(client, args)
 		}
 		teamReady[clientTeam] = false;
 		CancelFullReady(client);
-	}
-	return Plugin_Handled;
-}
-
-public Action:ToggleReady_Cmd(client, args)
-{
-	if (isPaused && IsPlayer(client))
-	{
-		new L4D2Team:clientTeam = L4D2Team:GetClientTeam(client);
-		teamReady[clientTeam] = !teamReady[clientTeam];
-		PrintToChatAll("[SM] %N marked %s as %sready", client, teamString[L4D2Team:GetClientTeam(client)], teamReady[clientTeam] ? "" : "not ");
-		if (!adminPause && teamReady[clientTeam] && CheckFullReady())
-		{
-			InitiateLiveCountdown();
-		}
-		else if (!teamReady[clientTeam])
-		{
-			CancelFullReady(client);
-		}
 	}
 	return Plugin_Handled;
 }
@@ -313,7 +280,6 @@ Pause()
 Unpause()
 {
 	isPaused = false;
-	adminPause = false;
 
 	new bool:unpauseProcessed = false;
 	for (new client = 1; client <= MaxClients; client++)
@@ -375,7 +341,7 @@ InitiateLiveCountdown()
 	if (readyCountdownTimer == INVALID_HANDLE)
 	{
 		PrintToChatAll("Going live!\nSay !unready to cancel");
-		readyDelay = GetConVarInt(l4d_ready_delay);
+		readyDelay = 5;
 		readyCountdownTimer = CreateTimer(1.0, ReadyCountdownDelay_Timer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -385,10 +351,6 @@ public Action:ReadyCountdownDelay_Timer(Handle:timer)
 	if (readyDelay == 0)
 	{
 		PrintToChatAll("Round is live!");
-		if (GetConVarBool(l4d_ready_blips))
-		{
-			CreateTimer(0.01, BlipDelay_Timer);
-		}
 		Unpause();
 		return Plugin_Stop;
 	}
@@ -398,11 +360,6 @@ public Action:ReadyCountdownDelay_Timer(Handle:timer)
 		readyDelay--;
 	}
 	return Plugin_Continue;
-}
-
-public Action:BlipDelay_Timer(Handle:timer)
-{
-	EmitSoundToAll("buttons/blip2.wav", _, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, 0.5);
 }
 
 CancelFullReady(client)
@@ -454,7 +411,7 @@ public Action:TeamSay_Callback(client, const String:command[], argc)
 
 public Action:Unpause_Callback(client, const String:command[], argc)
 {
-	if (isPaused)
+	if (0 == client && isPaused)
 	{
 		return Plugin_Handled;
 	}

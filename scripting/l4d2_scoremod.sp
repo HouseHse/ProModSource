@@ -1,11 +1,28 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma semicolon 1
 
 #include <sourcemod>
 #include <sdktools>
 #include <left4downtown>
-#undef REQUIRE_PLUGIN
-#include <l4d2lib>
-#define REQUIRE_PLUGIN
 
 #define DEBUG_SM	0
 
@@ -15,11 +32,9 @@ public Plugin:myinfo =
 	name = "L4D2 Scoremod",
 	author = "CanadaRox, ProdigySim",
 	description = "L4D2 Custom Scoring System (Health Bonus)",
-	version = "1.1b",
+	version = "1.1a",
 	url = "https://bitbucket.org/CanadaRox/random-sourcemod-stuff"
 };
-
-new bool:l4d2lib_available = false;
 
 new SM_iDefaultSurvivalBonus;
 new SM_iDefaultTieBreaker;
@@ -114,27 +129,6 @@ public OnPluginStart()
 	RegConsoleCmd("sm_health", SM_Cmd_Health);
 }
 
-public OnAllPluginsLoaded()
-{
-	l4d2lib_available = LibraryExists("l4d2lib");
-}
- 
-public OnLibraryRemoved(const String:name[])
-{
-	if (StrEqual(name, "l4d2lib"))
-	{
-		l4d2lib_available = false;
-	}
-}
- 
-public OnLibraryAdded(const String:name[])
-{
-	if (StrEqual(name, "l4d2lib"))
-	{
-		l4d2lib_available = true;
-	}
-}
-
 public OnPluginEnd()
 {
 	PluginDisable();
@@ -149,11 +143,10 @@ public OnMapStart()
 	
 	if (SM_bModuleIsEnabled && !SM_bHooked) PluginEnable();
 	if (SM_bModuleIsEnabled) SetConVarInt(SM_hTieBreaker, 0);
-	if (SM_bModuleIsEnabled && GetConVarBool(SM_hCustomMaxDistance) && GetCustomMapMaxScore() > -1) 
+	if (SM_bModuleIsEnabled && GetConVarBool(SM_hCustomMaxDistance) && GetMapMaxScore() > -1) 
 	{
-		SetMapMaxScore(GetCustomMapMaxScore());
 		// to allow a distance score of 0 and a health bonus
-		if (GetCustomMapMaxScore() > 0) SM_fMapMulti = float(GetCustomMapMaxScore()) / 400.0;
+		if (GetMapMaxScore() > 0) SM_fMapMulti = float(GetMapMaxScore()) / 400.0;
 	}
 	
 	SM_bIsFirstRoundOver = false;
@@ -255,7 +248,7 @@ public Action:SM_RoundEnd_Event(Handle:event, const String:name[], bool:dontBroa
 		// If the score is nonzero, trust the SurvivalBonus var.
 		SM_iFirstScore = (SM_iFirstScore ? GetConVarInt(SM_hSurvivalBonus) *iAliveCount : 0);
 		PrintToChatAll("\x01[ScoreMod] Round 1 Bonus: \x05%d\x01", SM_iFirstScore);
-		if (GetConVarBool(SM_hCustomMaxDistance) && GetCustomMapMaxScore() > -1) PrintToChatAll("\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetCustomMapMaxScore());
+		if (GetConVarBool(SM_hCustomMaxDistance) && GetMapMaxScore() > -1) PrintToChatAll("\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetMapMaxScore());
 	}
 	else if (SM_bIsSecondRoundStarted && !SM_bIsSecondRoundOver)
 	{
@@ -271,7 +264,7 @@ public Action:SM_RoundEnd_Event(Handle:event, const String:name[], bool:dontBroa
 		iDifference = SM_iFirstScore - iScore;
 		if (iScore > SM_iFirstScore) iDifference = (~iDifference) + 1;
 		PrintToChatAll("\x01[ScoreMod] Difference: \x05%d\x01", iDifference);
-		if (GetConVarBool(SM_hCustomMaxDistance) && GetCustomMapMaxScore() > -1) PrintToChatAll("\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetCustomMapMaxScore());
+		if (GetConVarBool(SM_hCustomMaxDistance) && GetMapMaxScore() > -1) PrintToChatAll("\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetMapMaxScore());
 	}
 }
 public Action:SM_RoundStart_Event(Handle:event, const String:name[], bool:dontBroadcast)
@@ -327,12 +320,12 @@ public Action:SM_Cmd_Health(client, args)
 		if (SM_fSurvivalBonusRatio != 0.0) PrintToServer("[ScoreMod] Static Survival Bonus Per Survivor: %d", RoundToFloor(400 * SM_fMapMulti * SM_fSurvivalBonusRatio));
 	}
 
-	if (GetConVarBool(SM_hCustomMaxDistance) && GetCustomMapMaxScore() > -1) {
+	if (GetConVarBool(SM_hCustomMaxDistance) && GetMapMaxScore() > -1) {
 		if (client) {
-			PrintToChat(client, "\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetCustomMapMaxScore());
+			PrintToChat(client, "\x01[ScoreMod] Custom Max Distance: \x05%d\x01", GetMapMaxScore());
 		}
 		else {
-			PrintToServer("[ScoreMod] Custom Max Distance: %d", GetCustomMapMaxScore());
+			PrintToServer("[ScoreMod] Custom Max Distance: %d", GetMapMaxScore());
 		}
 	}
 }
@@ -466,17 +459,7 @@ stock GetSurvivorIncapCount(client)
     return GetEntProp(client, Prop_Send, "m_currentReviveCount");
 }
 
-stock GetCustomMapMaxScore()
-{
-	return l4d2lib_available ? L4D2_GetMapValueInt("max_distance", -1) : -1;
-}
-
 stock GetMapMaxScore()
 {
 	return L4D_GetVersusMaxCompletionScore();
-}
-
-stock SetMapMaxScore(score)
-{
-	L4D_SetVersusMaxCompletionScore(score);
 }

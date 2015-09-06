@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #define PLUGIN_VERSION "1.4"
 
@@ -9,7 +29,7 @@ public Plugin:myinfo =
 {
 	name = "Thirdpersonshoulder Block",
 	author = "Don",
-	description = "Spectates clients who enable the thirdpersonshoulder mode on L4D1/2 to prevent them from looking around corners, through walls etc.",
+	description = "Kicks clients who enable the thirdpersonshoulder mode on L4D1/2 to prevent them from looking around corners, through walls etc.",
 	version = PLUGIN_VERSION,
 	url = "http://forums.alliedmods.net/showthread.php?t=159582"
 }
@@ -63,7 +83,7 @@ public QueryClientConVarCallback(QueryCookie:cookie, client, ConVarQueryResult:r
 			new String:sName[MAX_NAME_LENGTH];
 			GetClientName(client, sName, sizeof(sName));
 			ChangeClientTeam(client, 1);
-			PrintToChatAll("\x03%s\x01 spectated due to \x04c_thirdpersonshoulder\x01 not valid or protected!", sName);
+			PrintToChatAll("\x01\x03%s\x01 spectated due to \x04c_thirdpersonshoulder\x01 not valid or protected!", sName);
 		}
 		else if (!StrEqual(cvarValue, "false") && !StrEqual(cvarValue, "0"))	/* If the ConVar was found on the client, but is not set to either "false" or "0",
 											 * kick the client as well, as he might be using thirdpersonshoulder.
@@ -72,7 +92,7 @@ public QueryClientConVarCallback(QueryCookie:cookie, client, ConVarQueryResult:r
 			new String:sName[MAX_NAME_LENGTH];
 			GetClientName(client, sName, sizeof(sName));
 			ChangeClientTeam(client, 1);
-			PrintToChatAll("\x03%s\x01 spectated due to \x04c_thirdpersonshoulder\x01, set at\x05 0\x01 to play!", sName);
+			PrintToChatAll("\x01\x03%s\x01 spectated due to \x04c_thirdpersonshoulder\x01, set at\x05 0\x01 to play!", sName);
 		}
 	}
 }

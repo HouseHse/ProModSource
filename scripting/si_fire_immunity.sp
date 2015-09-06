@@ -4,14 +4,14 @@
 #include <sdktools>
 
 new Handle:infected_fire_immunity;
-new bool:inWait = false;
+new bool:inWait[MAXPLAYERS+1] = false;
 
 public Plugin:myinfo = 
 {
     name = "SI Fire Immunity",
     author = "Jacob",
     description = "Special Infected fire damage management.",
-    version = "2.0",
+    version = "2.1",
     url = "github.com/jacob404/myplugins"
 }
 
@@ -23,7 +23,6 @@ public OnPluginStart()
 
 public SIOnFire(Handle:event, const String:name[], bool:dontBroadcast)
 {
-    
     new client = GetClientOfUserId(GetEventInt(event, "userid"));
     if(!IsValidClient(client) || !(GetClientTeam(client) == 3)) return;
     
@@ -44,17 +43,17 @@ public SIOnFire(Handle:event, const String:name[], bool:dontBroadcast)
  
 public Action:Extinguish(Handle:timer, any:client)
 {
-    if(!inWait)
+    if(IsValidClient(client) && !inWait[client])
     {
         ExtinguishEntity(client);
-        inWait = true;
+        inWait[client] = true;
         CreateTimer(1.2, ExtinguishWait, client);
     }
 }
 
 public Action:ExtinguishWait(Handle:timer, any:client)
 {
-   inWait = false;
+   if (IsValidClient(client)) inWait[client] = false;
 }
 
 stock bool:IsValidClient(client, bool:nobots = true)
@@ -64,4 +63,4 @@ stock bool:IsValidClient(client, bool:nobots = true)
         return false; 
     }
     return IsClientInGame(client); 
-}  
+}

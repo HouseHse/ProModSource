@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma semicolon 1
 
 #include <sourcemod>
@@ -7,7 +27,7 @@
 #define DEBUG                   false
 
 #define MAX_SOUNDFILE_LENGTH    64
-#define MAX_JOCKEYSOUND         1
+#define MAX_JOCKEYSOUND         17
 
 #define JOCKEY_VOICE_TIMEOUT    2.0
 #define SOUND_CHECK_INTERVAL    3.0
@@ -26,27 +46,43 @@ new Handle: hJockeyLaughingTimer[MAXPLAYERS+1];
 
 new const String: sJockeySound[MAX_JOCKEYSOUND+1][] =
 {
-    "player/jockey/voice/idle/jockey_spotprey_01.wav",
-	"player/jockey/voice/idle/jockey_lurk04.wav"
+    "player/jockey/voice/idle/jockey_recognize02.wav",
+    "player/jockey/voice/idle/jockey_recognize06.wav",
+    "player/jockey/voice/idle/jockey_recognize07.wav",
+    "player/jockey/voice/idle/jockey_recognize08.wav",
+    "player/jockey/voice/idle/jockey_recognize09.wav",
+    "player/jockey/voice/idle/jockey_recognize10.wav",
+    "player/jockey/voice/idle/jockey_recognize11.wav",
+    "player/jockey/voice/idle/jockey_recognize12.wav",
+    "player/jockey/voice/idle/jockey_recognize13.wav",
+    "player/jockey/voice/idle/jockey_recognize15.wav",
+    "player/jockey/voice/idle/jockey_recognize16.wav",
+    "player/jockey/voice/idle/jockey_recognize17.wav",
+    "player/jockey/voice/idle/jockey_recognize18.wav",
+    "player/jockey/voice/idle/jockey_recognize19.wav",
+    "player/jockey/voice/idle/jockey_recognize20.wav",
+    "player/jockey/voice/idle/jockey_recognize24.wav",
+    "player/jockey/voice/idle/jockey_lurk04.wav",
+    "player/jockey/voice/idle/jockey_lurk05.wav"
 };
 
 /*
------------------------------------------------------------------------------------------------------------------------------------------------------
+    -----------------------------------------------------------------------------------------------------------------------------------------------------
 
-To-Do:
----------
-- find a way to make the sound hook removal/addition work reliably
+    To-Do:
+    ---------
+        - find a way to make the sound hook removal/addition work reliably
 
-Changelog
----------
-0.1b
-- fix error log spam
-0.1a
-- plays sound at set time after jockey spawns up
-- but only if the jockey isn't already making noise
+    Changelog
+    ---------
+        0.1b
+            - fix error log spam
+        0.1a
+            - plays sound at set time after jockey spawns up
+            - but only if the jockey isn't already making noise
 
------------------------------------------------------------------------------------------------------------------------------------------------------
-*/
+    -----------------------------------------------------------------------------------------------------------------------------------------------------
+ */
 
 public Plugin:myinfo = 
 {
@@ -58,14 +94,14 @@ public Plugin:myinfo =
 }
 
 /* -------------------------------
-*      Init
-* ------------------------------- */
+ *      Init
+ * ------------------------------- */
 
 public OnPluginStart()
 {
     // cvars
     hPluginEnabled =     CreateConVar("sm_unsilentjockey_enabled", "1",   "Enable unsilent jockey mode.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
-    hJockeySoundAlways = CreateConVar("sm_unsilentjockey_always",  "1",   "Whether to play jockey spawn sound even if it is not detected as silent.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
+    hJockeySoundAlways = CreateConVar("sm_unsilentjockey_always",  "0",   "Whether to play jockey spawn sound even if it is not detected as silent.", FCVAR_PLUGIN, true, 0.0, true, 1.0);
     hJockeySoundTime =   CreateConVar("sm_unsilentjockey_time",    "0.1", "How soon to play sound after spawning (in seconds).", FCVAR_PLUGIN, true, 0.0, true, 10.0);
     
     // hooks / events
@@ -86,25 +122,25 @@ public OnMapStart()
 
 /*
 public ConVarChange_JockeySoundAlways(Handle:cvar, const String:oldValue[], const String:newValue[]) {
-if (StringToInt(newValue) == 0) {
-RemoveNormalSoundHook(NormalSHook:HookSound_Callback);
-} else {
-AddNormalSoundHook(NormalSHook:HookSound_Callback);
-}
+    if (StringToInt(newValue) == 0) {
+        RemoveNormalSoundHook(NormalSHook:HookSound_Callback);
+    } else {
+        AddNormalSoundHook(NormalSHook:HookSound_Callback);
+    }
 }
 */
 
 
 /* -------------------------------
-*      Events
-* ------------------------------- */
+ *      Events
+ * ------------------------------- */
 
 public Action:PlayerSpawn_Event(Handle:event, const String:name[], bool:dontBroadcast)
 {
     if (!GetConVarBool(hPluginEnabled))                                 { return Plugin_Continue; }
     
     new client = GetClientOfUserId(GetEventInt(event, "userid"));
-    
+
     // the usual checks, only actual jockeys
     if (!IsClientAndInGame(client))                                     { return Plugin_Continue; }
     if (GetClientTeam(client) != TEAM_INFECTED)                         { return Plugin_Continue; }
@@ -152,7 +188,7 @@ public Action:HookSound_Callback(Clients[64], &NumClients, String:StrSample[PLAT
     if (hJockeyLaughingTimer[Entity] == INVALID_HANDLE) {
         hJockeyLaughingTimer[Entity] = CreateTimer(SOUND_CHECK_INTERVAL, Timer_IsJockeyLaughing, Entity, TIMER_REPEAT);
     }
-    
+
     return Plugin_Continue;
 }
 
@@ -174,11 +210,12 @@ public Action:Timer_IsJockeyLaughing(Handle:hTimer, any:Client)
 }  
 
 /* --------------------------------------
-*     Shared function(s)
-* -------------------------------------- */
+ *     Shared function(s)
+ * -------------------------------------- */
 
 bool:IsClientAndInGame(index)
 {
     return (index > 0 && index <= MaxClients && IsClientInGame(index));
 }
+
 

@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma semicolon 1
 
 #define L4D2UTIL_STOCKS_ONLY
@@ -24,15 +44,12 @@ new Handle:hPenaltyIncreaseCvar;
 
 new g_iPenaltyIncrease;
 
-new bool:g_NoHunterM2 = false;
-
 public Plugin:myinfo =
 {
     name        = "L4D2 M2 Control",
-    author      = "Jahze, Visor",
-    version     = "1.3",
-    description = "Blocks instant repounces and gives m2 penalty after a deadstop",
-	url 		= "https://github.com/Attano/Equilibrium"
+    author      = "Jahze",
+    version     = "1.1",
+    description = "Blocks instant repounces and gives maximum m2 penalty after a deadstop"
 }
 
 public OnPluginStart() {
@@ -43,14 +60,9 @@ public OnPluginStart() {
     hMaxStaggerDurationCvar = FindConVar("z_max_stagger_duration");
     hLeapIntervalCvar = FindConVar("z_leap_interval");
 
-    hPenaltyIncreaseCvar = CreateConVar("l4d2_deadstop_penalty", "6", "How much penalty gets added when you deadstop a hunter or jockey");
+    hPenaltyIncreaseCvar = CreateConVar("l4d2_deadstop_penalty", "0", "How much penalty gets added when you deadstop a hunter or jockey");
     HookConVarChange(hPenaltyIncreaseCvar, PenaltyIncreaseChange);
     g_iPenaltyIncrease = GetConVarInt(hPenaltyIncreaseCvar);
-}
-
-public OnAllPluginsLoaded()
-{
-	g_NoHunterM2 = (FindPluginByFile("l4d2_no_hunter_deadstops") != INVALID_HANDLE);
 }
 
 public PenaltyIncreaseChange(Handle:hCvar, const String:oldVal[], const String:newVal[]) {
@@ -58,35 +70,29 @@ public PenaltyIncreaseChange(Handle:hCvar, const String:oldVal[], const String:n
 }
 
 public Action:OutSkilled(Handle:event, const String:name[], bool:dontBroadcast) {
-	new shovee = GetClientOfUserId(GetEventInt(event, "userid"));
-	new shover = GetClientOfUserId(GetEventInt(event, "attacker"));
+    new shovee = GetClientOfUserId(GetEventInt(event, "userid"));
+    new shover = GetClientOfUserId(GetEventInt(event, "attacker"));
 
-	if (!IsSurvivor(shover) || !IsInfected(shovee))
-		return;
+    if (!IsSurvivor(shover) || !IsInfected(shovee))
+        return;
 
-	new L4D2_Infected:zClass = GetInfectedClass(shovee);
+    new L4D2_Infected:zClass = GetInfectedClass(shovee);
 
-	if (zClass == L4D2Infected_Hunter || zClass == L4D2Infected_Jockey || zClass == L4D2Infected_Smoker) {
-		new maxPenalty = GetConVarInt(hMaxShovePenaltyCvar);
-		new penalty = L4D2Direct_GetShovePenalty(shover);
+    if (zClass == L4D2Infected_Hunter || zClass == L4D2Infected_Jockey) {
+        new maxPenalty = GetConVarInt(hMaxShovePenaltyCvar);
+        new penalty = L4D2Direct_GetShovePenalty(shover);
 
-		penalty += g_iPenaltyIncrease;
-		if (penalty > maxPenalty) {
-			penalty = maxPenalty;
-		}
+        penalty += g_iPenaltyIncrease;
+        if (penalty > maxPenalty) {
+            penalty = maxPenalty;
+        }
 
-		L4D2Direct_SetShovePenalty(shover, penalty);
-		L4D2Direct_SetNextShoveTime(shover, CalcNextShoveTime(penalty, maxPenalty));
+        L4D2Direct_SetShovePenalty(shover, penalty);
+        L4D2Direct_SetNextShoveTime(shover, CalcNextShoveTime(penalty, maxPenalty));
 
-		if (zClass == L4D2Infected_Smoker
-			|| (zClass == L4D2Infected_Hunter && g_NoHunterM2))
-		{
-			return;
-		}
-		
-		new Float:staggerTime = GetConVarFloat(hMaxStaggerDurationCvar);
-		CreateTimer(staggerTime - STAGGER_TIME_EPS, ResetAbilityTimer, shovee);
-	}
+        new Float:staggerTime = GetConVarFloat(hMaxStaggerDurationCvar);
+        CreateTimer(staggerTime - STAGGER_TIME_EPS, ResetAbilityTimer, shovee);
+    }
 }
 
 public Action:ResetAbilityTimer(Handle:event, any:shovee) {

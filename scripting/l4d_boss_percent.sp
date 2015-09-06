@@ -10,10 +10,9 @@
 public Plugin:myinfo =
 {
 	name = "L4D2 Boss Flow Announce (Back to roots edition)",
-	author = "ProdigySim, Jahze, Stabby, CircleSquared, CanadaRox, Visor",
-	version = "1.6.1",
-	description = "Announce boss flow percents!",
-	url = "https://github.com/ConfoglTeam/ProMod"
+	author = "ProdigySim, Jahze, Stabby, CircleSquared, CanadaRox",
+	version = "1.6-btr",
+	description = "Announce boss flow percents!"
 };
 
 new iWitchPercent = 0;
@@ -24,13 +23,10 @@ new Handle:hCvarPrintToEveryone;
 new Handle:hCvarTankPercent;
 new Handle:hCvarWitchPercent;
 new bool:readyUpIsAvailable;
-new bool:readyFooterAdded;
 
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
-	CreateNative("UpdateBossPercents", Native_UpdateBossPercents);
 	MarkNativeAsOptional("AddStringToReadyFooter");
-	RegPluginLibrary("l4d_boss_percent");
 	return APLRes_Success;
 }
 
@@ -82,17 +78,7 @@ public OnRoundIsLive()
 
 public RoundStartEvent(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	readyFooterAdded = false;
-
 	CreateTimer(5.0, SaveBossFlows);
-	CreateTimer(6.0, AddReadyFooter); // workaround for boss equalizer
-}
-
-public Native_UpdateBossPercents(Handle:plugin, numParams)
-{
-	CreateTimer(0.1, SaveBossFlows);
-	CreateTimer(0.2, AddReadyFooter);
-	return true;
 }
 
 public Action:SaveBossFlows(Handle:timer)
@@ -122,11 +108,7 @@ public Action:SaveBossFlows(Handle:timer)
 			iTankPercent = RoundToNearest(GetTankFlow(1)*100.0);
 		}
 	}
-}
 
-public Action:AddReadyFooter(Handle:timer)
-{
-	if (readyFooterAdded) return;
 	if (readyUpIsAvailable)
 	{
 		decl String:readyString[65];
@@ -139,7 +121,6 @@ public Action:AddReadyFooter(Handle:timer)
 		else
 			Format(readyString, sizeof(readyString), "Tank: None, Witch: None");
 		AddStringToReadyFooter(readyString);
-		readyFooterAdded = true;
 	}
 }
 

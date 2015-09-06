@@ -27,7 +27,6 @@
 
 #define MAX_FOOTERS 10
 #define MAX_FOOTER_LEN 65
-#define MAX_SOUNDS 5
 
 #define SOUND "/level/gnomeftw.wav"
 
@@ -38,7 +37,7 @@ public Plugin:myinfo =
 	name = "L4D2 Ready-Up",
 	author = "CanadaRox",
 	description = "New and improved ready-up plugin.",
-	version = "8.1",
+	version = "6",
 	url = ""
 };
 
@@ -55,9 +54,6 @@ new Handle:l4d_ready_disable_spawns;
 new Handle:l4d_ready_cfg_name;
 new Handle:l4d_ready_survivor_freeze;
 new Handle:l4d_ready_max_players;
-new Handle:l4d_ready_delay;
-new Handle:l4d_ready_blips;
-new Handle:l4d_ready_chuckle;
 
 // Game Cvars
 new Handle:director_no_specials;
@@ -79,17 +75,6 @@ new footerCounter = 0;
 new readyDelay;
 new bool:blockSecretSpam[MAXPLAYERS + 1];
 
-new Handle:allowedCastersTrie;
-
-new String:countdownSound[MAX_SOUNDS][]=
-{
-	"/npc/moustachio/strengthattract01.wav",
-	"/npc/moustachio/strengthattract02.wav",
-	"/npc/moustachio/strengthattract05.wav",
-	"/npc/moustachio/strengthattract06.wav",
-	"/npc/moustachio/strengthattract09.wav"
-};
-
 public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
 	CreateNative("AddStringToReadyFooter", Native_AddStringToReadyFooter);
@@ -108,16 +93,12 @@ public OnPluginStart()
 	l4d_ready_disable_spawns = CreateConVar("l4d_ready_disable_spawns", "0", "Prevent SI from having spawns during ready-up", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	l4d_ready_survivor_freeze = CreateConVar("l4d_ready_survivor_freeze", "1", "Freeze the survivors during ready-up.  When unfrozen they are unable to leave the saferoom but can move freely inside", FCVAR_PLUGIN, true, 0.0, true, 1.0);
 	l4d_ready_max_players = CreateConVar("l4d_ready_max_players", "12", "Maximum number of players to show on the ready-up panel.", FCVAR_PLUGIN, true, 0.0, true, MAXPLAYERS+1.0);
-	l4d_ready_delay = CreateConVar("l4d_ready_delay", "5", "Number of seconds to count down before the round goes live.", FCVAR_PLUGIN, true, 0.0);
-	l4d_ready_blips = CreateConVar("l4d_ready_blips", "1", "Enable blips during countdown");
-	l4d_ready_chuckle = CreateConVar("l4d_ready_chuckle", "1", "Enable chuckle during countdown");
 	HookConVarChange(l4d_ready_survivor_freeze, SurvFreezeChange);
 
 	HookEvent("round_start", RoundStart_Event);
 	HookEvent("player_team", PlayerTeam_Event);
 
 	casterTrie = CreateTrie();
-	allowedCastersTrie = CreateTrie();
 
 	director_no_specials = FindConVar("director_no_specials");
 	god = FindConVar("god");
@@ -127,7 +108,6 @@ public OnPluginStart()
 
 	RegAdminCmd("sm_caster", Caster_Cmd, ADMFLAG_BAN, "Registers a player as a caster so the round will not go live unless they are ready");
 	RegAdminCmd("sm_forcestart", ForceStart_Cmd, ADMFLAG_BAN, "Forces the round to start regardless of player ready status.  Players can unready to stop a force");
-	RegAdminCmd("sm_fs", ForceStart_Cmd, ADMFLAG_BAN, "Forces the round to start regardless of player ready status.  Players can unready to stop a force");
 	RegConsoleCmd("\x73\x6d\x5f\x62\x6f\x6e\x65\x73\x61\x77", Secret_Cmd, "Every player has a different secret number between 0-1023");
 	RegConsoleCmd("sm_hide", Hide_Cmd, "Hides the ready-up panel so other menus can be seen");
 	RegConsoleCmd("sm_show", Show_Cmd, "Shows a hidden ready-up panel");
@@ -136,9 +116,7 @@ public OnPluginStart()
 	RegConsoleCmd("sm_toggleready", ToggleReady_Cmd, "Toggle your ready status");
 	RegConsoleCmd("sm_unready", Unready_Cmd, "Mark yourself as not ready if you have set yourself as ready");
 	RegConsoleCmd("sm_return", Return_Cmd, "Return to a valid saferoom spawn if you get stuck during an unfrozen ready-up period");
-    	RegConsoleCmd("sm_cast", Cast_Cmd, "Registers the calling player as a caster so the round will not go live unless they are ready");
 	RegServerCmd("sm_resetcasters", ResetCaster_Cmd, "Used to reset casters between matches.  This should be in confogl_off.cfg or equivalent for your system");
-	RegServerCmd("sm_add_caster_id", AddCasterSteamID_Cmd, "Used for adding casters to the whitelist -- i.e. who's allowed to self-register as a caster");
 
 #if DEBUG
 	RegAdminCmd("sm_initready", InitReady_Cmd, ADMFLAG_ROOT);
@@ -158,17 +136,10 @@ public OnMapStart()
 {
 	/* OnMapEnd needs this to work */
 	PrecacheSound(SOUND);
-	PrecacheSound("buttons/blip1.wav");
-	PrecacheSound("buttons/blip2.wav");
-	for (new i = 0; i < MAX_SOUNDS; i++)
-	{
-		PrecacheSound(countdownSound[i]);
-	}
 	for (new client = 1; client <= MAXPLAYERS; client++)
 	{
 		blockSecretSpam[client] = false;
 	}
-	readyCountdownTimer = INVALID_HANDLE;
 }
 
 /* This ensures all cvars are reset if the map is changed during ready-up */
@@ -230,34 +201,17 @@ stock bool:IsIDCaster(const String:AuthID[])
 	return GetTrieValue(casterTrie, AuthID, dummy);
 }
 
-public Action:Cast_Cmd(client, args)
-{	
-    	decl String:buffer[64];
-	GetClientAuthString(client, buffer, sizeof(buffer));
-	new index = FindStringInArray(allowedCastersTrie, buffer);
-	if (index != -1)
-	{
-		SetTrieValue(casterTrie, buffer, 1);
-		ReplyToCommand(client, "You have registered yourself as a caster");
-	}
-	else
-	{
-		ReplyToCommand(client, "Your SteamID was not found in this server's caster whitelist. Contact the admins to get approved.");
-	}
-	return Plugin_Handled;
-}
-
 public Action:Caster_Cmd(client, args)
-{	
+{
 	if (args < 1)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_caster <player>");
 		return Plugin_Handled;
 	}
 	
-    	decl String:buffer[64];
+	decl String:buffer[64];
 	GetCmdArg(1, buffer, sizeof(buffer));
-	
+
 	new target = FindTarget(client, buffer, true, false);
 	if (target > 0) // If FindTarget fails we don't need to print anything as it prints it for us!
 	{
@@ -268,7 +222,7 @@ public Action:Caster_Cmd(client, args)
 		}
 		else
 		{
-		    	ReplyToCommand(client, "Couldn't find Steam ID.  Check for typos and let the player get fully connected.");
+			ReplyToCommand(client, "Couldn't find Steam ID.  Check for typos and let the player get fully connected.");
 		}
 	}
 	return Plugin_Handled;
@@ -277,24 +231,6 @@ public Action:Caster_Cmd(client, args)
 public Action:ResetCaster_Cmd(args)
 {
 	ClearTrie(casterTrie);
-	return Plugin_Handled;
-}
-
-public Action:AddCasterSteamID_Cmd(args)
-{
-	decl String:buffer[128];
-	GetCmdArg(1, buffer, sizeof(buffer));
-	if (buffer[0] != EOS) 
-	{
-		new index = FindStringInArray(allowedCastersTrie, buffer);
-		if (index == -1)
-		{
-			PushArrayString(allowedCastersTrie, buffer);
-			PrintToServer("[casters_database] Added '%s'", buffer);
-		}
-		else PrintToServer("[casters_database] '%s' already exists", buffer);
-	}
-	else PrintToServer("[casters_database] No args specified / empty buffer");
 	return Plugin_Handled;
 }
 
@@ -358,10 +294,7 @@ public Action:NotCasting_Cmd(client, args)
 
 public Action:ForceStart_Cmd(client, args)
 {
-	if (inReadyUp)
-	{
-		InitiateLiveCountdown();
-	}
+	InitiateLiveCountdown();
 	return Plugin_Handled;
 }
 
@@ -475,12 +408,7 @@ public Action:L4D_OnFirstSurvivorLeftSafeArea(client)
 
 public Action:Return_Cmd(client, args)
 {
-	if (client > 0
-			&& inReadyUp
-			&& L4D2Team:GetClientTeam(client) == L4D2Team_Survivor)
-	{
-		ReturnPlayerToSaferoom(client, false);
-	}
+	ReturnPlayerToSaferoom(client, false);
 	return Plugin_Handled;
 }
 
@@ -674,12 +602,6 @@ InitiateLive(bool:real = true)
 
 	L4D2_CTimerStart(L4D2CT_VersusStartTimer, 60.0);
 
-	for (new i = 0; i < 4; i++)
-	{
-		GameRules_SetProp("m_iVersusDistancePerSurvivor", 0, _,
-				i + 4 * GameRules_GetProp("m_bAreTeamsFlipped"));
-	}
-
 	for (new i = 0; i < MAX_FOOTERS; i++)
 	{
 		readyFooter[i] = "";
@@ -779,7 +701,7 @@ InitiateLiveCountdown()
 		SetTeamFrozen(L4D2Team_Survivor, true);
 		PrintHintTextToAll("Going live!\nSay !unready to cancel");
 		inLiveCountdown = true;
-		readyDelay = GetConVarInt(l4d_ready_delay);
+		readyDelay = 5;
 		readyCountdownTimer = CreateTimer(1.0, ReadyCountdownDelay_Timer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
@@ -791,20 +713,11 @@ public Action:ReadyCountdownDelay_Timer(Handle:timer)
 		PrintHintTextToAll("Round is live!");
 		InitiateLive();
 		readyCountdownTimer = INVALID_HANDLE;
-		if (GetConVarBool(l4d_ready_chuckle))
-		{
-			EmitSoundToAll(countdownSound[GetRandomInt(0,MAX_SOUNDS-1)]);
-		}
-		else { EmitSoundToAll("buttons/blip2.wav", _, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, 0.5); }
 		return Plugin_Stop;
 	}
 	else
 	{
 		PrintHintTextToAll("Live in: %d\nSay !unready to cancel", readyDelay);
-		if (GetConVarBool(l4d_ready_blips))
-		{
-			EmitSoundToAll("buttons/blip1.wav", _, SNDCHAN_AUTO, SNDLEVEL_NORMAL, SND_NOFLAGS, 0.5);
-		}
 		readyDelay--;
 	}
 	return Plugin_Continue;

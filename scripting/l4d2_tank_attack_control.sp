@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <sourcemod>
 #include <left4downtown>
 
@@ -5,20 +25,19 @@
 //throw sequences:
 //48 - (not used unless tank_rock_overhead_percent is changed)
 
-//49 - 1handed overhand (+attack2),
-//50 - underhand (+use),
-//51 - 2handed overhand (+reload)
+//49 - 1handed overhand (MOUSE2+R),
+//50 - underhand (MOUSE2+E),
+//51 - 2handed overhand (MOUSE2)
 
 new g_iQueuedThrow[MAXPLAYERS + 1];
 new Handle:g_hBlockPunchRock = INVALID_HANDLE;
-new Handle:hOverhandOnly;
 
 public Plugin:myinfo = 
 {
-	name = "Tank Attack Control", 
-	author = "vintik, CanadaRox, Jacob",
+	name = "Tank Attack Control",
+	author = "vintik, CanadaRox",
 	description = "",
-	version = "0.5",
+	version = "0.4",
 	url = "https://github.com/CanadaRox/sm_plugins"
 }
 
@@ -33,7 +52,6 @@ public OnPluginStart()
 	
 	//future-proof remake of the confogl feature (could be used with lgofnoc)
 	g_hBlockPunchRock = CreateConVar("l4d2_block_punch_rock", "1", "Block tanks from punching and throwing a rock at the same time");
-	hOverhandOnly = CreateConVar("tank_overhand_only", "0", "Force tank to only throw overhand rocks.", FCVAR_PLUGIN);
 
 	HookEvent("tank_spawn", TankSpawn_Event);
 }
@@ -49,12 +67,12 @@ public TankSpawn_Event(Handle:event, const String:name[], bool:dontBroadcast)
 	{
 		hidemessage = bool:StringToInt(buffer);
 	}
-	if (!hidemessage && (GetConVarBool(hOverhandOnly) == false))
+	if (!hidemessage)
 	{
 		PrintToChat(tank, "[SM] Rock Selector");
 		PrintToChat(tank, "Use -> Underhand throw");
-		PrintToChat(tank, "Melee -> One hand overhand");
-		PrintToChat(tank, "Reload -> Two hand overhand");
+		PrintToChat(tank, "Reload -> One hand overhand");
+		PrintToChat(tank, "Melee -> Two hand overhand");
 	}
 }
 
@@ -64,29 +82,20 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 		|| GetEntProp(client, Prop_Send, "m_zombieClass") != 8)
 			return Plugin_Continue;
 	//if tank
-	
-	if (GetConVarBool(hOverhandOnly) == false)
+	if (buttons & IN_RELOAD)
 	{
-		if (buttons & IN_RELOAD)
-		{
-			g_iQueuedThrow[client] = 3; //two hand overhand
-			buttons |= IN_ATTACK2;
-		}
-		else if (buttons & IN_USE)
-		{
-			g_iQueuedThrow[client] = 2; //underhand
-			buttons |= IN_ATTACK2;
-		}
-		else
-		{
-			g_iQueuedThrow[client] = 1; //one hand overhand
-		}
+		g_iQueuedThrow[client] = 1;
+		buttons |= IN_ATTACK2;
+	}
+	else if (buttons & IN_USE)
+	{
+		g_iQueuedThrow[client] = 2;
+		buttons |= IN_ATTACK2;
 	}
 	else
 	{
-		g_iQueuedThrow[client] = 3; // two hand overhand
+		g_iQueuedThrow[client] = 3;
 	}
-	
 	return Plugin_Continue;
 }
 

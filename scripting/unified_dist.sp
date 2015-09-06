@@ -16,7 +16,7 @@ new Handle:hMapDist;
 
 public OnPluginStart()
 {
-	hMapDist = CreateConVar("map_dist", "100", "Set custom map distance for every map");
+	hMapDist = CreateConVar("map_dist", "200", "Set custom map distance for every map");
 }
 
 public OnMapStart()

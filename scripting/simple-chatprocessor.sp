@@ -38,7 +38,7 @@ $Copyright: (c) Simple Plugins 2008-2009$
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION				"2.1.0"
+#define PLUGIN_VERSION				"2.0.0"
 #define SENDER_WORLD			0
 #define MAXLENGTH_INPUT			128 	// Inclues \0 and is the size of the chat input box.
 #define MAXLENGTH_NAME			64		// This is backwords math to get compability.  Sourcemod has it set at 32, but there is room for more.
@@ -52,7 +52,7 @@ $Copyright: (c) Simple Plugins 2008-2009$
 
 #define ADDSTRING(%1) SetTrieValue(g_hChatFormats, %1, 1)
 
-#define UPDATE_URL "http://dl.dropboxusercontent.com/u/83581539/ChatProcessor/updater.txt"
+#define UPDATE_URL "http://dev.xadgaming.com/simple-chat-processor/raw/master/updater.txt"
 
 enum eMods
 {
@@ -99,7 +99,6 @@ new String:g_sGameName[eMods][32] =
 
 new Handle:g_hChatFormats = INVALID_HANDLE;
 new Handle:g_fwdOnChatMessage;
-new Handle:g_fwdOnChatMessagePost;
 
 new bool:g_bSayText2;
 new	bool:g_bAutoUpdate;
@@ -190,10 +189,9 @@ public OnPluginStart()
 	}
 
 	/**
-	Create the global forwards for other plugins
+	Create the global forward for other plugins
 	*/
 	g_fwdOnChatMessage = CreateGlobalForward("OnChatMessage", ET_Hook, Param_CellByRef, Param_Cell, Param_String, Param_String);
-	g_fwdOnChatMessagePost = CreateGlobalForward("OnChatMessage_Post", ET_Ignore, Param_Cell, Param_Cell, Param_String, Param_String);
 
 	g_hDPArray = CreateArray();
 }
@@ -337,7 +335,7 @@ public Action:OnSayText2(UserMsg:msg_id, Handle:bf, const clients[], numClients,
 	decl String:cpSender_Name[MAXLENGTH_NAME];
 	if (bProtobuf)
 	{
-		PbReadString(bf, "params", cpSender_Name, sizeof(cpSender_Name), 0);
+		PbReadString(bf, "params", cpSender_Name, sizeof(cpSender_Name));
 	}
 	else if (BfGetNumBytesLeft(bf))
 	{
@@ -386,7 +384,6 @@ public Action:OnSayText2(UserMsg:msg_id, Handle:bf, const clients[], numClients,
 	Call_PushStringEx(cpMessage, sizeof(cpMessage), SM_PARAM_STRING_UTF8|SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
 	new fError = Call_Finish(fResult);
 	
-	new chatFlags = g_CurrentChatType;
 	g_CurrentChatType = CHATFLAGS_INVALID;
 	
 	if (fError != SP_ERROR_NONE)
@@ -447,7 +444,6 @@ public Action:OnSayText2(UserMsg:msg_id, Handle:bf, const clients[], numClients,
 	WritePackString(cpPack, cpMessage);
 	PushArrayCell(g_hDPArray, cpPack);
 	WritePackCell(cpPack, bProtobuf);
-	WritePackCell(cpPack, chatFlags);
 
 	CloseHandle(cpRecipients);
 	
@@ -556,7 +552,6 @@ public Action:OnSayText(UserMsg:msg_id, Handle:bf, const clients[], numClients, 
 	Call_PushStringEx(textMessage, sizeof(textMessage), SM_PARAM_STRING_UTF8|SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
 	new fError = Call_Finish(fResult);
 	
-	new chatFlags = g_CurrentChatType;
 	g_CurrentChatType = CHATFLAGS_INVALID;
 	
 	if (fError != SP_ERROR_NONE)
@@ -613,8 +608,7 @@ public Action:OnSayText(UserMsg:msg_id, Handle:bf, const clients[], numClients, 
 	WritePackString(cpPack, senderName);
 	WritePackString(cpPack, textMessage);
 	PushArrayCell(g_hDPArray, cpPack);
-	// We don't care about saving bProtobuf since we print SayText messages with PrintToChat
-	WritePackCell(cpPack, chatFlags);
+	WritePackCell(cpPack, bProtobuf);
 
 	CloseHandle(cpRecipients);
 	
@@ -630,12 +624,9 @@ public OnGameFrame()
 	{
 		new Handle:pack = GetArrayCell(g_hDPArray, i);
 		ResetPack(pack);
-		
-		decl String:sSenderName[MAXLENGTH_NAME], String:sMessage[MAXLENGTH_INPUT];
-		new client, Handle:recipients = CreateArray();
 		if (g_bSayText2)
 		{
-			client = ReadPackCell(pack);
+			new client = ReadPackCell(pack);
 			new numClientsStart = ReadPackCell(pack);
 			new numClientsFinish;
 			new clients[numClientsStart];
@@ -646,12 +637,13 @@ public OnGameFrame()
 				if (IsValidClient(buffer))
 				{
 					clients[numClientsFinish++] = buffer;
-					PushArrayCell(recipients, buffer);
 				}
 			}
 			
 			new bool:bChat = bool:ReadPackCell(pack);
 			decl String:sChatType[32];
+			decl String:sSenderName[MAXLENGTH_NAME];
+			decl String:sMessage[MAXLENGTH_INPUT];
 			ReadPackString(pack, sChatType, sizeof(sChatType));
 			ReadPackString(pack, sSenderName, sizeof(sSenderName));
 			ReadPackString(pack, sMessage, sizeof(sMessage));
@@ -682,7 +674,7 @@ public OnGameFrame()
 		}
 		else
 		{
-			client = ReadPackCell(pack);
+			new client = ReadPackCell(pack);
 			new numClientsStart = ReadPackCell(pack);
 			new numClientsFinish;
 			new clients[numClientsStart];
@@ -693,11 +685,12 @@ public OnGameFrame()
 				if (IsValidClient(buffer))
 				{
 					clients[numClientsFinish++] = buffer;
-					PushArrayCell(recipients, buffer);
 				}
 			}
 			
 			decl String:sPrefix[MAXLENGTH_NAME];
+			decl String:sSenderName[MAXLENGTH_NAME];
+			decl String:sMessage[MAXLENGTH_INPUT];
 			ReadPackString(pack, sPrefix, sizeof(sPrefix));
 			ReadPackString(pack, sSenderName, sizeof(sSenderName));
 			ReadPackString(pack, sMessage, sizeof(sMessage));
@@ -726,17 +719,6 @@ public OnGameFrame()
 			}
 		}
 		
-		g_CurrentChatType = ReadPackCell(pack);
-		Call_StartForward(g_fwdOnChatMessagePost);
-		Call_PushCell(client);
-		Call_PushCell(recipients);
-		Call_PushString(sSenderName);
-		Call_PushString(sMessage);
-		Call_Finish();
-		g_CurrentChatType = CHATFLAGS_INVALID;
-		
-		
-		CloseHandle(recipients);
 		CloseHandle(pack);
 
 		RemoveFromArray(g_hDPArray, i);
@@ -834,7 +816,7 @@ stock eMods:GetCurrentMod()
 	}
 	if (StrEqual(sGameType, "hl2mp", false))
 	{
-		return GameType_HL2DM;
+		return GameType_FF;
 	}
 	if (StrEqual(sGameType, "insurgency", false) || StrEqual(sGameType, "ins", false))
 	{

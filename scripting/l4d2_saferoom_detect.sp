@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma semicolon 1
 
 #include <sourcemod>
@@ -27,19 +47,22 @@ static const String:MAPINFO_PATH[] = "configs/saferoominfo.txt";
     Changelog
     =========
     
-        0.0.7
-            - Built in safeguard against trying to find values before keyvalues file is loaded.
-
-        0.0.6
-            - Fixed problems with entities that don't have location data
-            
-        0.0.1 - 0.0.5
+        0.0.5
             - Got rid of dependency on l4d2lib. Now falls back on lgofnoc, if loaded.
             - Now regged as 'saferoom_detect'
+            
+        0.0.4
             - Fixed swapped start/end saferoom problem.
+            
+        0.0.3
             - Better saferoom detection for weird saferooms (Death Toll church, Dead Air greenhouse), two-part saferoom checks.
             - Uses KeyValues file now: saferoominfo.txt in sourcemod/configs/
+            
+        0.0.2
             - All official maps done (even Cold Stream).
+            
+        0.0.1
+            - Added ugly maptable and maps for all standard L4D2 campaigns (L4D1 still to do)
         
 */
 
@@ -48,7 +71,7 @@ public Plugin:myinfo =
     name = "Precise saferoom detection",
     author = "Tabun",
     description = "Allows checks whether a coordinate/entity/player is in start or end saferoom (uses saferoominfo.txt).",
-    version = "0.0.7",
+    version = "0.0.5",
     url = ""
 }
 
@@ -156,7 +179,7 @@ public OnMapEnd()
 
 public IsEntityInStartSaferoom(entity)
 {
-    if ( !IsValidEntity(entity) || GetEntSendPropOffs(entity, "m_vecOrigin", true) == -1 ) { return false; }
+    if (!IsValidEntity(entity)) { return false; }
     
     // get entity location
     new Float: location[3];
@@ -167,7 +190,7 @@ public IsEntityInStartSaferoom(entity)
 
 public IsEntityInEndSaferoom(entity)
 {
-    if ( !IsValidEntity(entity) || GetEntSendPropOffs(entity, "m_vecOrigin", true) == -1 ) { return false; }
+    if (!IsValidEntity(entity)) { return false; }
     
     // get entity location
     new Float: location[3];
@@ -262,7 +285,7 @@ IsPointInStartSaferoom(Float:location[3], entity=-1)
         new Float:saferoom[3];
         LGO_GetMapValueVector("start_point", saferoom, NULL_VECTOR);
         
-        if ( entity != -1 && IsValidEntity(entity) && GetEntSendPropOffs(entity, "m_vecOrigin", true) != -1 )
+        if ( entity != -1 && IsValidEntity(entity) )
         {
             GetEntPropVector(entity, Prop_Send, "m_vecOrigin", location);
         }
@@ -329,7 +352,7 @@ IsPointInEndSaferoom(Float:location[3], entity = -1)
         new Float:saferoom[3];
         LGO_GetMapValueVector("end_point", saferoom, NULL_VECTOR);
         
-        if ( entity != -1 && IsValidEntity(entity) && GetEntSendPropOffs(entity, "m_vecOrigin", true) != -1 )
+        if ( entity != -1 && IsValidEntity(entity) )
         {
             GetEntPropVector(entity, Prop_Send, "m_vecOrigin", location);
         }
@@ -369,11 +392,6 @@ SI_KV_Load()
 
 bool: SI_KV_UpdateSaferoomInfo()
 {
-    if (g_kSIData == INVALID_HANDLE) {
-        LogError("[SI] No saferoom keyvalues loaded!");
-        return false;
-    }
-
     // defaults
     g_bHasStart = false;        g_bHasStartExtra = false;
     g_bHasEnd = false;          g_bHasEndExtra = false;

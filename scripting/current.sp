@@ -10,21 +10,9 @@
 new Handle:hCvarPrintToEveryone;
 new Handle:survivor_limit;
 new Handle:z_max_player_zombies;
-new Handle:g_hVsBossBuffer;
-
-public Plugin:myinfo =
-{
-    name = "L4D2 Survivor Progress",
-    author = "CanadaRox, Visor",
-    description = "Print survivor progress in flow percents ",
-    version = "2.0.1",
-    url = "https://github.com/Attano/ProMod"
-};
 
 public OnPluginStart()
 {
-	g_hVsBossBuffer = FindConVar("versus_boss_buffer");
-
 	hCvarPrintToEveryone =
 		CreateConVar("l4d_global_percent", "1",
 				"Display boss percentages to entire team when using commands",
@@ -59,15 +47,14 @@ public Action:CurrentCmd(client, args)
 
 stock PrintCurrentToClient(client)
 {
-	new boss_proximity = RoundToNearest(GetBossProximity() * 100.0);
-	PrintToChat(client, "\x01Current: \x04%d%%", boss_proximity);
+	PrintToChat(client, "\x01Current: \x04%d%%", GetMaxSurvivorCompletion());
 }
 
 stock PrintCurrentToTeam(L4D2_Team:team)
 {
 	new members_found;
 	new team_max = GetTeamMaxHumans(team);
-	new boss_proximity = RoundToNearest(GetBossProximity() * 100.0);
+	new max_completion = GetMaxSurvivorCompletion();
 	for (new client = 1;
 			client <= MaxClients && members_found < team_max;
 			client++)
@@ -76,18 +63,12 @@ stock PrintCurrentToTeam(L4D2_Team:team)
 				L4D2_Team:GetClientTeam(client) == team)
 		{
 			members_found++;
-			PrintToChat(client, "\x01Current: \x04%d%%", boss_proximity);
+			PrintToChat(client, "\x01Current: \x04%d%%", max_completion);
 		}
 	}
 }
 
-stock Float:GetBossProximity()
-{
-	new Float:proximity = GetMaxSurvivorCompletion() + (GetConVarFloat(g_hVsBossBuffer) / L4D2Direct_GetMapMaxFlowDistance());
-	return (proximity > 1.0 ? 1.0 : proximity);
-}
-
-stock Float:GetMaxSurvivorCompletion()
+stock GetMaxSurvivorCompletion()
 {
 	new Float:flow = 0.0;
 	decl Float:tmp_flow;
@@ -107,7 +88,7 @@ stock Float:GetMaxSurvivorCompletion()
 			}
 		}
 	}
-	return (flow / L4D2Direct_GetMapMaxFlowDistance());
+	return RoundToNearest(flow * 100 / L4D2Direct_GetMapMaxFlowDistance());
 }
 
 stock GetTeamMaxHumans(L4D2_Team:team)

@@ -55,10 +55,10 @@ new bool:bTankHudHintShown[MAXPLAYERS + 1];
 
 public Plugin:myinfo = 
 {
-	name = "Hyper-V HUD Manager [Public Version]",
+	name = "Hyper-V HUD Manager",
 	author = "Visor",
 	description = "Provides different HUDs for spectators",
-	version = "2.9",
+	version = "2.8",
 	url = "https://github.com/Attano/smplugins"
 };
 
@@ -404,9 +404,6 @@ FillGameInfo(Handle:hSpecHud)
 	if (GetCurrentGameMode() == L4D2Gamemode_Versus)
 	{
 		Format(info, sizeof(info), "%s (%s round)", info, (InSecondHalfOfRound() ? "2nd" : "1st"));
-		DrawPanelText(hSpecHud, info);
-
-		Format(info, sizeof(info), "Natural horde: %is", CTimer_HasStarted(L4D2Direct_GetMobSpawnTimer()) ? RoundFloat(CTimer_GetRemainingTime(L4D2Direct_GetMobSpawnTimer())) : 0);
 		DrawPanelText(hSpecHud, info);
 
 		Format(info, sizeof(info), "Survivor progress: %i%%", RoundToNearest(GetHighestSurvivorFlow() * 100.0));

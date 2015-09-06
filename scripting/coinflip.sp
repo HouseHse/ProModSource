@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /*    
 		Coinflip
 
@@ -5,11 +25,11 @@
    Credit for the idea goes to Fig
    This version was made out of convenience
    
-   1.0.2: added e-z-p-z commands, removed unnecessary colors.inc, removed generation of config file
  */
  
 #include <sourcemod>
 #include <sdktools>
+#include <colors> // Colors documentation: http://forums.alliedmods.net/showthread.php?t=96831
 
 new result_int;
 new String:client_name[32]; // Used to store the client_name of the player who calls coinflip
@@ -23,21 +43,20 @@ new number_max = 20; // Default maximum bound for picknumber
 public Plugin:myinfo =
 {
 	name = "Coinflip",
-	author = "purpletreefactory, epilimic",
+	author = "purpletreefactory",
 	description = "purpletreefactory's version of coinflip",
-	version = "1.0.2",
+	version = "1.0.1",
 	url = "http://www.sourcemod.net/"
 }
  
 public OnPluginStart()
 {
-	delay_time = CreateConVar("coinflip_delay","-1", "Time delay in seconds between allowed coinflips. Set at -1 if no delay at all is desired.");
+	delay_time = CreateConVar("coinflip_delay","10", "Time delay in seconds between allowed coinflips. Set at -1 if no delay at all is desired.");
 
 	RegConsoleCmd("sm_coinflip", Command_Coinflip);
-	RegConsoleCmd("sm_cf", Command_Coinflip);
-	RegConsoleCmd("sm_flip", Command_Coinflip);
-	RegConsoleCmd("sm_roll", Command_Picknumber);
 	RegConsoleCmd("sm_picknumber", Command_Picknumber);
+	
+	AutoExecConfig(true, "coinflip"); // Automatically creates a config file, or uses it if it already exists
 }
 
 public Action:Command_Coinflip(client, args)
@@ -50,9 +69,9 @@ public Action:Command_Coinflip(client, args)
 		GetClientName(client, client_name, sizeof(client_name)); // Gets the client_name of the person using the command
 		
 		if(result_int == 0)
-			PrintToChatAll("\x01[\x05Coinflip\x01] \x03%s\x01 flipped a coin!\nIt's \x04Heads\x01!", client_name); // Here \x04 is actually yellow
+			CPrintToChatAll("[Coinflip] {lightgreen}%s{default} flipped a coin!\nIt's {green}Heads{default}!", client_name); // Here {green} is actually yellow
 		else
-			PrintToChatAll("\x01[\x05Coinflip\x01] \x03%s\x01 flipped a coin!\nIt's \x04Tails\x01!", client_name);
+			CPrintToChatAll("[Coinflip] {lightgreen}%s{default} flipped a coin!\nIt's {green}Tails{default}!", client_name);
 		
 		previous_timeC = current_timeC; // Update the previous time
 	}
@@ -76,7 +95,7 @@ public Action:Command_Picknumber(client, args)
 		{
 			result_int = GetURandomInt() % (number_max); // Generates a random number within the default range
 			
-			PrintToChatAll("\x01[\x05Coinflip\x01] \x03%s\x01 rolled a \x03%d \x01sided die!\nIt's \x04%d\x01!", client_name, number_max, result_int + 1);
+			CPrintToChatAll("[Coinflip] {lightgreen}%s{default} rolled a %d sided die!\nIt's {green}%d{default}!", client_name, number_max, result_int + 1);
 		}
 		else
 		{
@@ -87,7 +106,7 @@ public Action:Command_Picknumber(client, args)
 			max = StringToInt(arg);
 			
 			result_int = GetURandomInt() % (max); // Generates a random number within the specified range
-			PrintToChatAll("\x01[\x05Coinflip\x01] \x03%s\x01 rolled a \x03%d \x01sided die!\nIt's \x04%d\x01!", client_name, max, result_int + 1);
+			CPrintToChatAll("[Coinflip] {lightgreen}%s{default} rolled a %d sided die!\nIt's {green}%d{default}!", client_name, max, result_int + 1);
 		}
 		
 		previous_timeN = current_timeN; // Update the previous time

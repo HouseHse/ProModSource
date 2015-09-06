@@ -1,3 +1,23 @@
+/*
+	SourcePawn is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	SourceMod is Copyright (C) 2006-2008 AlliedModders LLC.  All rights reserved.
+	Pawn and SMALL are Copyright (C) 1997-2008 ITB CompuPhase.
+	Source is Copyright (C) Valve Corporation.
+	All trademarks are property of their respective owners.
+
+	This program is free software: you can redistribute it and/or modify it
+	under the terms of the GNU General Public License as published by the
+	Free Software Foundation, either version 3 of the License, or (at your
+	option) any later version.
+
+	This program is distributed in the hope that it will be useful, but
+	WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma semicolon 1
 
 #include <sourcemod>
@@ -27,8 +47,8 @@ new Handle: hOverHitInterval			= INVALID_HANDLE;
 public Plugin:myinfo = 
 {
     name = "L4D2 Hittable Control",
-    author = "Stabby, Visor",
-    version = "0.4",
+    author = "Stabby",
+    version = "0.3.1",
     description = "Allows for customisation of hittable damage values."
 };
 
@@ -100,8 +120,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	
 	decl String:sClass[64];
 	GetEdictClassname(inflictor, sClass, sizeof(sClass));
-	//PrintToChatAll("%s dealt %f", sClass, damage);
-	if (StrEqual(sClass,"prop_physics") || StrEqual(sClass,"prop_car_alarm"))
+	
+	if (StrEqual(sClass,"prop_physics"))
 	{
 		if (bIgnoreOverkill[victim]) { return Plugin_Handled; }
 				
@@ -169,7 +189,6 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			{
 				damage = GetConVarFloat(hHandtruckStandingDamage);
 			}
-			//PrintToChatAll("%s fell on %N, dealing %f dmg", sModelName, victim, damage);
 		}
 		
 		new Float:interval = GetConVarFloat(hOverHitInterval);		
@@ -189,3 +208,5 @@ public Action:Timed_ClearInvulnerability(Handle:thisTimer, any:victim)
 {
 	bIgnoreOverkill[victim] = false;
 }
+
+
